@@ -1,0 +1,18 @@
+# Normalise line endings. You develop on Windows; CI and Railway run Linux.
+# Without this, every file gains a CRLF diff the first time CI touches it.
+* text=auto eol=lf
+
+# Binary assets must never be normalised.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff  binary
+*.woff2 binary
+*.pdf  binary
+
+# Lockfiles are generated: keep them out of diff review noise.
+uv.lock           linguist-generated=true -diff
+package-lock.json linguist-generated=true -diff

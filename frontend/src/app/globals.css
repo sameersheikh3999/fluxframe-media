@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Fluxframe Media — design tokens.
+
+   Every colour, font and spacing decision on the site resolves to a token
+   declared here. Pages compose tokens; they do not invent hex values. That is
+   the difference between a design system and a pile of Tailwind classes.
+
+   The palette is deliberately narrow: near-black ink on warm paper, one accent.
+   The brief asked for restrained and premium, and restraint means saying no to
+   a second accent colour, not adding a gradient to the first one.
+
+   Light-only, on purpose. A marketing site that commits to one look is easier
+   to keep coherent than one that maintains two. The dashboard (Phase 2) can
+   revisit this if it needs to.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Surfaces */
+  --color-paper: #fbfaf8;
+  --color-paper-raised: #ffffff;
+  --color-paper-inverse: #0e0e0d;
+
+  /* Text */
+  --color-ink: #0e0e0d;
+  --color-ink-muted: #6c6860;
+  --color-ink-inverse: #fbfaf8;
+
+  /* Lines */
+  --color-line: #e7e3db;
+  --color-line-strong: #d4cfc4;
+
+  /* Accent — used sparingly: calls to action and one rule per section. */
+  --color-accent: #c0492a;
+  --color-accent-hover: #a03a20;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif, sans-serif;
+
+  /* Display scale. Generous, as the brief asked. */
+  --text-display: clamp(2.75rem, 6vw, 5rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.035em;
+
+  --text-headline: clamp(2rem, 3.6vw, 3rem);
+  --text-headline--line-height: 1.08;
+  --text-headline--letter-spacing: -0.028em;
+
+  --text-title: clamp(1.25rem, 1.8vw, 1.5rem);
+  --text-title--line-height: 1.25;
+  --text-title--letter-spacing: -0.018em;
+
+  --text-lead: clamp(1.0625rem, 1.3vw, 1.25rem);
+  --text-lead--line-height: 1.6;
+
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1;
+  --text-eyebrow--letter-spacing: 0.16em;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* A visible focus ring that matches the brand rather than the browser default. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

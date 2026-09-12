@@ -1,0 +1,149 @@
+; ---------------------------------------------------------------------------
+; Fluxframe Media — architectural boundaries, enforced in CI.
+;
+; This file is the difference between "we have a layered architecture" and
+; "we have a layered architecture". Run it with:  uv run lint-imports
+; ---------------------------------------------------------------------------
+[importlinter]
+root_package = app
+include_external_packages = True
+
+; ---------------------------------------------------------------------------
+; Contract 1 — the dependency direction.
+;
+; Read top to bottom. A layer may import anything BELOW it, never above.
+;   main          composes the application
+;   api           translates HTTP into use-case calls
+;   dependencies  the composition root: the only place that knows which
+;                 adapter satisfies which port
+;   application   use cases
+;   domain        business rules
+; ---------------------------------------------------------------------------
+[importlinter:contract:layers]
+name = Layered architecture: api -> dependencies -> application -> domain
+type = layers
+layers =
+    app.main
+    app.api
+    app.dependencies
+    app.application
+    app.domain
+
+; ---------------------------------------------------------------------------
+; Contract 2 — the domain is pure Python.
+;
+; Everything in app/domain/ must be runnable in a unit test with no network,
+; no database, no framework and no configuration. That is the whole point.
+; ---------------------------------------------------------------------------
+[importlinter:contract:domain-purity]
+name = Domain must not depend on anything outside itself
+type = forbidden
+source_modules =
+    app.domain
+forbidden_modules =
+    app.api
+    app.schemas
+    app.application
+    app.infrastructure
+    app.config
+    app.dependencies
+    app.observability
+    app.main
+    fastapi
+    starlette
+    pydantic
+    pydantic_settings
+    structlog
+    httpx
+    uvicorn
+
+; ---------------------------------------------------------------------------
+; Contract 3 — the application layer depends on PORTS, never on adapters.
+;
+; A service says "I need something that can save a lead". It must not know
+; that the something is SQLAlchemy talking to Neon.
+; ---------------------------------------------------------------------------
+[importlinter:contract:application-independence]
+name = Application must not depend on infrastructure, transport or config
+type = forbidden
+source_modules =
+    app.application
+forbidden_modules =
+    app.api
+    app.schemas
+    app.infrastructure
+    app.config
+    app.dependencies
+    app.observability
+    app.main
+    fastapi
+    starlette
+    pydantic
+    pydantic_settings
+    httpx
+    uvicorn
+
+; ---------------------------------------------------------------------------
+; Contract 4 — routers never reach for a concrete adapter.
+;
+; They receive what they need through FastAPI's Depends(), and the provider
+; lives in app/dependencies/. This is what keeps the composition root single.
+;
+; allow_indirect_imports is set because the legitimate wiring path is exactly
+; an indirect one:
+;
+;     app.api.v1.health -> app.dependencies.services -> app.infrastructure.clock
+;
+; That chain is the composition root doing its job. What this contract forbids
+; is a router importing SystemClock (or, later, HubSpotClient) *directly* and
+; constructing it itself, which is how a second, informal composition root gets
+; born and how the layering quietly dies.
+; ---------------------------------------------------------------------------
+[importlinter:contract:api-uses-ports]
+name = API must not import infrastructure directly
+type = forbidden
+allow_indirect_imports = True
+source_modules =
+    app.api
+    app.schemas
+forbidden_modules =
+    app.infrastructure
+
+; ---------------------------------------------------------------------------
+; Contract 5 — adapters implement ports; they do not drive use cases.
+;
+; Infrastructure may import app.application.ports and app.application.dto
+; (it has to, in order to satisfy them) but it must never call a service.
+; Nothing flows "outward" from an adapter into the application layer.
+; ---------------------------------------------------------------------------
+[importlinter:contract:infrastructure-is-an-adapter]
+name = Infrastructure must not drive the application or transport layers
+type = forbidden
+source_modules =
+    app.infrastructure
+forbidden_modules =
+    app.api
+    app.schemas
+    app.application.services
+    app.dependencies
+    app.main
+
+; ---------------------------------------------------------------------------
+; Contract 6 — Pydantic schemas are transport contracts.
+;
+; They describe what JSON looks like on the wire. They may reference domain
+; enums (so enum values have exactly one source of truth) but nothing else.
+; ---------------------------------------------------------------------------
+[importlinter:contract:schemas-are-transport-only]
+name = Schemas describe the wire format and nothing else
+type = forbidden
+source_modules =
+    app.schemas
+forbidden_modules =
+    app.api
+    app.application
+    app.infrastructure
+    app.config
+    app.dependencies
+    app.observability
+    app.main
