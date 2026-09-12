@@ -19,7 +19,7 @@ instead of — that score.
 | **Database** | PostgreSQL (Railway or Neon) · Alembic migrations |
 | **CRM** | HubSpot — optional, degrades cleanly |
 | **AI** | Anthropic Claude — optional, degrades cleanly |
-| **Deploy** | Railway, two services from this one repository |
+| **Deploy** | Railway — one service, one domain (two-service also supported) |
 
 The backend is the application layer. Next.js renders and collects; it holds no
 business logic, no database access and no secrets.
@@ -192,20 +192,23 @@ returns a clear 503 and the dashboard explains why.
 
 ## Deploying to Railway
 
-Two services from this one repository, distinguished by **Root Directory**. Each
-has its own Dockerfile and `railway.toml`.
+**One service. One domain. One set of variables.**
+
+Both the Next.js frontend and the FastAPI backend run in a single container,
+with Next.js in front proxying `/api/v1/*` to the API beside it. Because they
+share an origin, **CORS never applies** and there is no `NEXT_PUBLIC_API_URL` to
+get wrong. See [ADR 0009](docs/decisions/0009-single-service-deployment.md) for
+the trade-offs — and note that the two-service shape is still supported if you
+want it later.
 
 ```
-GitHub repo
-   ├── backend/   ──► Railway service "backend"   (root directory: backend)
-   └── frontend/  ──► Railway service "frontend"  (root directory: frontend)
-                 ──► Railway PostgreSQL plugin
+Internet ──► Next.js ($PORT) ──► FastAPI (127.0.0.1:8000) ──► PostgreSQL
+              site + dashboard      never publicly exposed
 ```
 
 ### 1. Push to GitHub
 
 ```bash
-git init            # if you have not already
 git add -A
 git commit -m "Fluxframe Media"
 git branch -M main
@@ -215,112 +218,83 @@ git push -u origin main
 
 ### 2. Create the project and the database
 
-In Railway: **New Project → Deploy from GitHub repo**, select the repository.
-Then **New → Database → Add PostgreSQL**. Railway provisions it and exposes
-`DATABASE_URL` for other services to reference.
+Railway → **New Project → Deploy from GitHub repo**, select the repository.
+Then **New → Database → Add PostgreSQL**.
 
-### 3. Deploy the backend
+### 3. Configure the service
 
-**New → GitHub Repo →** same repository. In the service's **Settings**:
+Leave **Root Directory EMPTY** — the repo root. Railway reads `railway.toml`
+and builds the root `Dockerfile`. The health check and the pre-deploy
+`alembic upgrade head` come from that file; nothing to set by hand.
 
-- **Root Directory**: `backend`
-- Railway reads `backend/railway.toml` and builds `backend/Dockerfile`
-- Health check path `/health` and the pre-deploy `alembic upgrade head` come
-  from that file — nothing to configure by hand
-
-**Variables** (Settings → Variables):
-
-| Variable | Value | Required |
-|---|---|---|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — reference the plugin, do not paste | yes |
-| `ENVIRONMENT` | `production` | yes |
-| `INTERNAL_API_SECRET` | generate: `python -c "import secrets; print(secrets.token_urlsafe(32))"` | yes |
-| `FRONTEND_ORIGINS` | the frontend's public URL (step 5) | yes |
-| `LOG_FORMAT` | `json` | recommended |
-| `HUBSPOT_ACCESS_TOKEN` | HubSpot Private App token | optional |
-| `HUBSPOT_SYNC_DEMO_LEADS` | `false` | optional |
-| `ANTHROPIC_API_KEY` | Anthropic key, for AI briefs | optional |
-| `ENABLE_DEMO_GENERATOR` | `true` to keep `/demo` working | optional |
-
-`ENVIRONMENT=production` makes the app **refuse to boot** without
-`INTERNAL_API_SECRET`, or with `*` in `FRONTEND_ORIGINS`. Both are configuration
-bugs worth crashing over rather than serving.
-
-Then **Settings → Networking → Generate Domain**. Note the URL.
-
-### 4. Deploy the frontend
-
-**New → GitHub Repo →** same repository again. Settings:
-
-- **Root Directory**: `frontend`
+> If Railway ever says *"Railpack could not determine how to build the app"*,
+> it means Root Directory is pointing at a folder with no `railway.toml`.
 
 **Variables:**
 
 | Variable | Value | Required |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | the backend URL from step 3 | yes |
-| `NEXT_PUBLIC_SITE_URL` | this service's own URL (step 5) | yes |
-| `INTERNAL_API_SECRET` | **the same value** as the backend | yes |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — *reference it, do not paste* | **yes** |
+| `ENVIRONMENT` | `production` | **yes** |
+| `INTERNAL_API_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` | **yes** |
+| `NEXT_PUBLIC_SITE_URL` | your public URL (fill in after step 4) | **yes** |
+| `LOG_FORMAT` | `json` | recommended |
 | `DASHBOARD_BASIC_AUTH_USER` | any username | recommended |
 | `DASHBOARD_BASIC_AUTH_PASSWORD` | a strong password | recommended |
+| `HUBSPOT_ACCESS_TOKEN` | HubSpot Private App token | optional |
+| `ANTHROPIC_API_KEY` | Anthropic key, for AI briefs | optional |
 
-> **The one that catches everyone:** `NEXT_PUBLIC_*` variables are inlined into
-> the browser bundle at **build** time, not read at runtime. Changing one
-> requires a **redeploy** to take effect. If the deployed site calls
-> `http://localhost:8000`, this is why.
+Notably **not** needed: `NEXT_PUBLIC_API_URL` and `FRONTEND_ORIGINS`. Same
+origin, so there is no cross-origin call to configure.
 
-**Settings → Networking → Generate Domain**.
+`ENVIRONMENT=production` makes the app **refuse to boot** without
+`INTERNAL_API_SECRET`. That is a configuration bug worth crashing over.
 
-### 5. Close the loop
+### 4. Generate a domain
 
-Two values were forward references. Set them now and redeploy both:
+**Settings → Networking → Generate Domain.** Then set `NEXT_PUBLIC_SITE_URL` to
+that URL and redeploy — it is baked in at build time, so it needs one rebuild to
+take effect. Everything else works immediately.
 
-1. Backend `FRONTEND_ORIGINS` → the frontend's URL. Without this the browser
-   blocks the form submission with a CORS error.
-2. Frontend `NEXT_PUBLIC_SITE_URL` → its own URL.
-
-### 6. Verify
+### 5. Verify
 
 ```bash
-curl https://<backend>.up.railway.app/health
-# {"status":"ok"}
+curl https://<your-app>.up.railway.app/health
+# {"status":"ok"}   <- proves BOTH processes are alive
 
-curl https://<backend>.up.railway.app/api/v1/health/ready
+curl https://<your-app>.up.railway.app/api/v1/health/ready
 # database "ok"; hubspot and ai "not_configured" unless you set their keys
 ```
 
-Then, in a browser:
+Then in a browser, on that one domain:
 
-1. Open the frontend URL — the marketing site renders.
-2. Go to `/book-call`, submit the form — you land on `/thank-you`.
-3. Open `/dashboard/leads` — your lead is there, scored, with a full breakdown.
-4. Open `/demo`, generate 10 leads, refresh the dashboard.
+| Path | What you get |
+|---|---|
+| `/` | the marketing site |
+| `/book-call` | submit the form → `/thank-you` |
+| `/dashboard/leads` | your lead, scored, with the full breakdown |
+| `/demo` | generate synthetic leads |
+| `/docs` | the FastAPI Swagger explorer |
 
-### 7. HubSpot (optional, after deploying)
+### 6. HubSpot (optional, after deploying)
 
-Run the bootstrap script once against your portal, then set
-`HUBSPOT_ACCESS_TOKEN` on the backend service. Any events that dead-lettered
-while the properties were missing can be replayed:
+Run `backend/scripts/hubspot_bootstrap.py` once against your portal, then set
+`HUBSPOT_ACCESS_TOKEN`. Anything that dead-lettered while properties were
+missing can be replayed:
 
 ```bash
-curl -X POST -H "X-Internal-Secret: <secret>" \
-  https://<backend>.up.railway.app/api/v1/admin/outbox/<event_id>/replay
+curl -X POST -H "X-Internal-Secret: <secret>"   https://<your-app>.up.railway.app/api/v1/admin/outbox/<event_id>/replay
 ```
 
-### Deploying the frontend to Vercel instead
+### Deploying as two services instead
 
-Also supported and slightly cheaper: import the repo, set **Root Directory** to
-`frontend`, add the same four variables. Vercel gives every preview deployment a
-unique hostname, so set `FRONTEND_ORIGIN_REGEX` on the backend rather than
-listing them:
-
-```
-FRONTEND_ORIGIN_REGEX=^https://fluxframe-media-[a-z0-9-]+\.vercel\.app$
-```
-
-Never `FRONTEND_ORIGINS=*` — the app refuses to start with it in production.
-
----
+Still fully supported, and better if you ever need to scale the halves
+independently. Create two services from the same repo with **Root Directory**
+set to `backend` and `frontend`; Railway then reads `backend/railway.toml` and
+`frontend/railway.toml` and ignores the root one. You must then also set
+`NEXT_PUBLIC_API_URL` (the backend's URL) and `FRONTEND_ORIGINS` (the
+frontend's URL), because the calls become cross-origin. Details in
+[docs/deployment.md](docs/deployment.md).
 
 ## Architecture
 

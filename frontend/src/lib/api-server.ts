@@ -17,7 +17,7 @@ import "server-only";
  * logic has begun migrating into Next.js — see docs/decisions/0005.
  */
 
-import { env, serverEnv } from "@/config/env";
+import { serverApiUrl, serverEnv } from "@/config/env";
 import type {
   DashboardStats,
   GenerateDemoLeadsResponse,
@@ -47,10 +47,15 @@ type RequestOptions = {
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { internalApiSecret } = serverEnv();
+  // `serverApiUrl()` rather than `env.apiUrl`: in the single-service
+  // deployment this is http://127.0.0.1:8000, so a Server Component talks
+  // straight to the FastAPI process beside it instead of taking a round trip
+  // out through the public load balancer and back in.
+  const base = serverApiUrl();
 
   let response: Response;
   try {
-    response = await fetch(`${env.apiUrl}${path}`, {
+    response = await fetch(`${base}${path}`, {
       method: options.method ?? "GET",
       headers: {
         "Content-Type": "application/json",
@@ -64,7 +69,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new BackendError(
       0,
       "backend_unreachable",
-      `Could not reach the API at ${env.apiUrl}. Is the backend running?`,
+      `Could not reach the API at ${base}. Is the backend running?`,
     );
   }
 

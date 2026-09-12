@@ -1,0 +1,33 @@
+# Build context hygiene: keep the image small and the build cache useful.
+.git/
+.github/
+docs/
+fluxframe-media/
+*.md
+!README.md
+
+# Secrets never enter the image. Railway injects environment variables at
+# runtime; a .env copied into a layer would be readable by anyone with the image.
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Backend
+backend/.venv/
+backend/tests/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.mypy_cache/
+backend/*.db
+backend/*.sqlite3
+
+# Frontend — reinstalled and rebuilt inside the image
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/AGENTS.md
+frontend/CLAUDE.md

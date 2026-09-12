@@ -1,0 +1,33 @@
+# Railway configuration — SINGLE-SERVICE deployment.
+#
+# With this file at the repository root, the service's Root Directory stays
+# EMPTY (the repo root) and Railway builds ./Dockerfile, which packages the
+# Next.js frontend and the FastAPI backend into one container.
+#
+# For the two-service alternative, set a service's Root Directory to `backend`
+# or `frontend` instead; Railway then reads backend/railway.toml or
+# frontend/railway.toml and ignores this file entirely. Both shapes are
+# supported — see docs/decisions/0009-single-service-deployment.md.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Runs once, before the new version takes traffic. Migrations belong here
+# rather than in the app's startup event: with more than one replica, startup
+# migrations race each other, and a bad migration becomes a readable failed
+# deploy instead of a crash loop.
+#
+# The venv is on PATH in the image, so `alembic` resolves; alembic.ini lives in
+# /app/backend.
+preDeployCommand = "cd /app/backend && alembic upgrade head"
+
+# Next.js proxies /health through to FastAPI (see frontend/next.config.ts), so
+# this single check proves BOTH processes are alive. A check that only proved
+# Next.js was up would report healthy while every API call 502'd.
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

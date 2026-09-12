@@ -18,6 +18,7 @@ old one; the old file stays, marked superseded.
 | [0006](0006-transactional-outbox.md) | Transactional outbox on PostgreSQL, with no broker | Accepted |
 | [0007](0007-idempotency-strategy.md) | Client-generated idempotency key plus a unique index | Accepted |
 | [0008](0008-ai-never-touches-the-score.md) | The AI interprets text; it never changes the score | Accepted |
+| [0009](0009-single-service-deployment.md) | Single-service deployment, with Next.js in front | Accepted |
 
 ## Smaller decisions, recorded in the code
 

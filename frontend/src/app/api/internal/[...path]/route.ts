@@ -15,7 +15,7 @@
 
 import { NextResponse } from "next/server";
 
-import { env, serverEnv } from "@/config/env";
+import { serverApiUrl, serverEnv } from "@/config/env";
 
 /**
  * Only these backend paths are reachable through the proxy.
@@ -52,10 +52,11 @@ async function forward(
   }
 
   const { internalApiSecret } = serverEnv();
+  const base = serverApiUrl();
   const body = await request.text();
 
   try {
-    const response = await fetch(`${env.apiUrl}/api/v1/${path}`, {
+    const response = await fetch(`${base}/api/v1/${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -75,7 +76,7 @@ async function forward(
       {
         error: {
           code: "backend_unreachable",
-          message: `Could not reach the API at ${env.apiUrl}.`,
+          message: `Could not reach the API at ${base}.`,
         },
       },
       { status: 502 },
