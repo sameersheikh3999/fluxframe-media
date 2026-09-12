@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format
+        run: uv run ruff format --check .
+
+      - name: Type check
+        run: uv run mypy app
+
+      # The architecture gate. This is the one that turns the dependency rule
+      # from a comment into a build failure.
+      - name: Architecture contracts
+        run: uv run lint-imports
+
+      # Unit, integration and API tests all run here. Integration tests use
+      # SQLite so the suite needs no database server — see docs/testing.md for
+      # what that does and does not cover.
+      - name: Tests
+        run: uv run pytest
+
+      # Renders the migration as SQL without connecting to anything. Catches a
+      # broken migration before it reaches a real database.
+      - name: Migration renders
+        env:
+          DATABASE_URL: postgresql+psycopg://user:pass@localhost:5432/ci
+        run: uv run alembic upgrade head --sql > /dev/null
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Runs before typecheck: Next.js generates route type definitions into
+      # .next/types during the build, and tsc needs them to exist.
+      # Placeholder public values: the build only needs them to be present
+      # and well-formed, since NEXT_PUBLIC_* is inlined at build time.
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: npm run build
+
+      - name: Type check
+        run: npm run typecheck
+
+  secrets:
+    name: No secrets in public env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # NEXT_PUBLIC_* is compiled into the browser bundle. A variable with that
+      # prefix and a secret-shaped name is the mistake that actually happens.
+      - name: Reject secret-shaped NEXT_PUBLIC_ variables
+        run: |
+          if grep -rInE 'NEXT_PUBLIC_[A-Z0-9_]*(SECRET|TOKEN|PASSWORD|PRIVATE_KEY)' \
+               --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' \
+               --include='*.env*' --include='*.example' . ; then
+            echo "::error::A NEXT_PUBLIC_ variable looks like a secret. It would ship to the browser."
+            exit 1
+          fi
+          echo "No secret-shaped public variables found."

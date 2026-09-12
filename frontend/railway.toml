@@ -1,0 +1,17 @@
+# Railway service configuration — frontend.
+#
+# Set this service's Root Directory to `frontend` in the Railway dashboard.
+#
+# NOTE: NEXT_PUBLIC_* variables must be set as BUILD variables, not just
+# runtime ones. Next.js inlines them into the browser bundle during `npm run
+# build`, so a value added after the build has no effect until you redeploy.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

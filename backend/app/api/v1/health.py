@@ -3,17 +3,20 @@
 Two endpoints, deliberately different, because platforms ask two different
 questions:
 
-    GET /api/v1/health        Liveness. "Is this process alive?" Touches
-                              nothing external. This is what Railway's health
-                              check calls. A liveness probe that queries the
-                              database will restart a healthy container during
-                              a database blip — turning a small outage into a
-                              crash loop.
+    GET /api/v1/health        Liveness. "Is this process alive?" Touches nothing
+                              external. This is what Railway's health check
+                              calls. A liveness probe that queries the database
+                              will restart a healthy container during a database
+                              blip — turning a small outage into a crash loop.
 
     GET /api/v1/health/ready  Readiness. "Can this process serve traffic?"
-                              Probes its dependencies. In Phase 0 there is
-                              nothing to probe, so it reports the database as
-                              `not_configured` rather than lying either way.
+                              Actually probes the database, and reports the CRM
+                              and AI providers as configured or not. Only a
+                              genuinely FAILED dependency makes it not ready;
+                              "not configured" is a supported mode.
+
+There is also a bare `GET /health` mounted at the application root in main.py,
+because most platforms default to that path.
 
 Notice the shape of both functions: receive the service, call one method, map
 the DTO onto the response schema. No logic. That is the whole job of a router.
@@ -59,8 +62,9 @@ def health(service: SystemServiceDep) -> HealthResponse:
     response_model=ReadinessResponse,
     summary="Readiness probe",
     description=(
-        "Reports whether every external dependency is usable. "
-        "In Phase 0 the database is reported as `not_configured`, because there is not one yet."
+        "Probes every external dependency. `not_configured` means the "
+        "integration is deliberately absent, which is a supported mode; only "
+        "`failed` makes the service unready."
     ),
 )
 async def readiness(service: SystemServiceDep) -> ReadinessResponse:

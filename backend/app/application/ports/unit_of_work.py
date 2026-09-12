@@ -1,12 +1,6 @@
 """Port: the transaction boundary.
 
-NOT IMPLEMENTED IN PHASE 0. This file declares the contract only; the first
-adapter (``SqlAlchemyUnitOfWork``) and the first repositories arrive in Phase 1.
-It is here because the boundary it describes is an approved architectural
-decision (docs/decisions/0004-unit-of-work-owns-the-transaction.md), and writing
-it down now is what stops Phase 1 from quietly reaching for a raw AsyncSession.
-
-The invariant it exists to protect, from Phase 3 onward:
+The invariant this exists to protect:
 
     async with uow:
         await uow.leads.add(lead)               # the lead
@@ -16,24 +10,42 @@ The invariant it exists to protect, from Phase 3 onward:
 
 Those three writes must share one PostgreSQL transaction. If the lead were
 committed first and the outbox row second, a process crash in between would
-leave a lead that HubSpot never hears about — silently, and forever.
+leave a lead that HubSpot never hears about — silently, and forever. There is no
+ordering of "commit locally" and "call a remote API" that is safe, because you
+cannot commit two systems atomically. Writing the *intent* into the same
+transaction as the data is the way out, and it works because it is all one
+database.
 
-Repository attributes (``uow.leads``, ``uow.outbox``, ...) are added to this
-Protocol in the phase that introduces them. They are not declared up front,
-because a port should describe what the application actually needs today.
+The three repositories are attributes rather than separate injected
+dependencies precisely so that sharing a session is structural rather than a
+convention someone breaks at 11pm.
+
+Implemented by app.infrastructure.database.unit_of_work.SqlAlchemyUnitOfWork.
+Faked by tests.fakes.FakeUnitOfWork.
 """
 
 from types import TracebackType
 from typing import Protocol, Self
 
+from app.application.ports.repositories import (
+    ActivityRepository,
+    LeadRepository,
+    OutboxRepository,
+)
+
 
 class UnitOfWork(Protocol):
     """An atomic unit of work over the application's persistent state.
 
-    Implementations own exactly one database session. Leaving the context
-    manager without calling ``commit()`` rolls back — the safe default, so that
-    a use case which raises halfway through cannot leave a partial write behind.
+    Implementations own exactly one database session and hand it to every
+    repository they expose. Leaving the context manager without calling
+    `commit()` rolls back — the safe default, so a use case that raises halfway
+    through cannot leave a partial write behind.
     """
+
+    leads: LeadRepository
+    activities: ActivityRepository
+    outbox: OutboxRepository
 
     async def __aenter__(self) -> Self:
         """Begin the unit of work."""
@@ -45,7 +57,7 @@ class UnitOfWork(Protocol):
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
-        """End the unit of work, rolling back unless ``commit()`` was called."""
+        """End it, rolling back unless commit() was called."""
         ...
 
     async def commit(self) -> None:

@@ -1,5 +1,9 @@
 # Implementation plan
 
+> **Phases 0–6 are complete and verified.** See
+> [PROJECT_STATUS.md](../PROJECT_STATUS.md) for exactly what was built, what
+> was checked, and what still needs your credentials.
+
 Each phase has a definition of done. Phase N+1 does not start until Phase N's
 gates are green and its documentation is written. Half-built phases are worse
 than unbuilt ones.
@@ -28,7 +32,7 @@ generator, dashboard, AI.
 
 ---
 
-## Phase 1 — First vertical slice
+## Phase 1 — First vertical slice ✅ COMPLETE
 
 The narrowest possible path from a form to a row in Postgres.
 
@@ -57,7 +61,7 @@ SQLAlchemy.
 
 ---
 
-## Phase 2 — Lead scoring
+## Phase 2 — Lead scoring ✅ COMPLETE
 
 - `domain/leads/scoring.py` — a pure function; rules as versioned data
 - HOT / WARM / COLD, clamped 0–100, with the budget-vs-volume coherence penalty
@@ -70,7 +74,7 @@ SQLAlchemy.
 
 ---
 
-## Phase 3 — HubSpot integration
+## Phase 3 — HubSpot integration ✅ COMPLETE
 
 - `CrmClient` port; `infrastructure/hubspot/` client, mapper and error taxonomy
 - `hubspot_bootstrap.py` creating custom properties idempotently
@@ -83,7 +87,7 @@ SQLAlchemy.
 
 ---
 
-## Phase 4 — Synthetic demo leads
+## Phase 4 — Synthetic demo leads ✅ COMPLETE
 
 - Coherent personas and the agreed distributions
 - `/demo` page, hidden from navigation, behind the internal secret
@@ -93,7 +97,7 @@ SQLAlchemy.
 
 ---
 
-## Phase 5 — Reliability
+## Phase 5 — Reliability ✅ COMPLETE
 
 - Outbox dispatcher as an asyncio task in the lifespan, using
   `FOR UPDATE SKIP LOCKED`
@@ -103,7 +107,7 @@ SQLAlchemy.
 
 ---
 
-## Phase 6 — AI sales brief
+## Phase 6 — AI sales brief ✅ COMPLETE
 
 Only once the deterministic system works. An LLM interprets the free-text
 `message` field: pain points, urgency, suggested service, a sales summary. It

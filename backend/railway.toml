@@ -1,0 +1,25 @@
+# Railway service configuration — backend.
+#
+# Set this service's Root Directory to `backend` in the Railway dashboard;
+# Railway then reads this file and the Dockerfile beside it.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Applied before the new version starts taking traffic. Running migrations here
+# rather than in the app's startup event matters: with more than one replica,
+# startup migrations race each other, and a failing migration turns into a
+# crash loop instead of a failed deploy you can read.
+preDeployCommand = "alembic upgrade head"
+
+# The liveness endpoint. Deliberately dependency-free: it answers "is this
+# process up", which is the only question a restart policy should act on. A
+# health check that queries the database restarts healthy containers during a
+# database blip.
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

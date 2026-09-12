@@ -14,18 +14,33 @@ include_external_packages = True
 ; Read top to bottom. A layer may import anything BELOW it, never above.
 ;   main          composes the application
 ;   api           translates HTTP into use-case calls
+;   workers       translates elapsed time into use-case calls (the outbox loop)
+;                 and routes outbox events to the services that consume them.
+;
+;                 Note where it sits: BELOW dependencies, not beside api.
+;                 Workers are driving adapters like routers — they call into the
+;                 application, never the reverse — but unlike routers they are
+;                 *assembled by* the composition root rather than assembled from
+;                 it, so the arrow runs dependencies -> workers.
+;
+;                 What matters is that they are not in app.infrastructure.
+;                 Infrastructure holds DRIVEN adapters: things the application
+;                 calls out to. A worker that calls a service is the opposite,
+;                 and filing it under infrastructure produced exactly the
+;                 inversion these contracts exist to catch.
 ;   dependencies  the composition root: the only place that knows which
 ;                 adapter satisfies which port
 ;   application   use cases
 ;   domain        business rules
 ; ---------------------------------------------------------------------------
 [importlinter:contract:layers]
-name = Layered architecture: api -> dependencies -> application -> domain
+name = Layered architecture: driving adapters -> dependencies -> application -> domain
 type = layers
 layers =
     app.main
     app.api
     app.dependencies
+    app.workers
     app.application
     app.domain
 
@@ -123,6 +138,7 @@ source_modules =
     app.infrastructure
 forbidden_modules =
     app.api
+    app.workers
     app.schemas
     app.application.services
     app.dependencies
@@ -131,8 +147,15 @@ forbidden_modules =
 ; ---------------------------------------------------------------------------
 ; Contract 6 — Pydantic schemas are transport contracts.
 ;
-; They describe what JSON looks like on the wire. They may reference domain
-; enums (so enum values have exactly one source of truth) but nothing else.
+; They describe what JSON looks like on the wire. They may reference the
+; controlled vocabularies a request is made of — domain enums (Industry,
+; LeadStatus) and application DTO enums (DemoQuality, DemoScenario) — so that an
+; enum value has exactly one definition shared by the validator, the database,
+; the CRM payload and the React dropdown. A vocabulary duplicated across layers
+; drifts; one defined once cannot.
+;
+; What remains forbidden is the part that would actually invert the dependency:
+; a schema must never reach a service, a port, or any adapter.
 ; ---------------------------------------------------------------------------
 [importlinter:contract:schemas-are-transport-only]
 name = Schemas describe the wire format and nothing else
@@ -141,7 +164,9 @@ source_modules =
     app.schemas
 forbidden_modules =
     app.api
-    app.application
+    app.application.services
+    app.application.ports
+    app.application.demo
     app.infrastructure
     app.config
     app.dependencies

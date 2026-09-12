@@ -6,19 +6,33 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
-    "pydantic>=2.9",
+    # [email] pulls in email-validator, which EmailStr needs. Validating an
+    # address properly at the edge is cheaper than storing a bad one forever.
+    "pydantic[email]>=2.9",
     "pydantic-settings>=2.6",
     "structlog>=24.4",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "alembic>=1.14",
+    # psycopg 3 gives us sync AND async from one package behind one URL scheme,
+    # which is why Alembic can stay synchronous while the app runs async.
+    "psycopg[binary]>=3.2",
+    "httpx>=0.27",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
-    "httpx>=0.27",
     "ruff>=0.8",
     "mypy>=1.13",
     "import-linter>=2.1",
+    # Integration tests run against SQLite so the suite needs no database server.
+    # The ORM uses portable column types with PostgreSQL variants, so the same
+    # models drive both. See docs/testing.md.
+    "aiosqlite>=0.20",
+    # Records/mocks httpx traffic: lets us test every HubSpot and Anthropic
+    # failure mode without a network or an API key.
+    "respx>=0.21",
 ]
 
 [build-system]

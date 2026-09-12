@@ -26,6 +26,10 @@ from app.schemas.errors import ErrorBody, ErrorDetail, ErrorResponse
 
 _logger = get_logger(__name__)
 
+#: Starlette renamed HTTP_422_UNPROCESSABLE_ENTITY to _CONTENT and warns on
+#: the old spelling. Pinned to the literal so the codebase works on both.
+HTTP_422_UNPROCESSABLE = 422
+
 
 def _render(
     *,
@@ -49,17 +53,25 @@ async def handle_domain_error(_request: Request, exc: Exception) -> JSONResponse
     """A business rule said no. That is a client error, not a server fault."""
     assert isinstance(exc, DomainError)
     return _render(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=HTTP_422_UNPROCESSABLE,
         code=exc.code,
         message=exc.message,
     )
 
 
 async def handle_application_error(_request: Request, exc: Exception) -> JSONResponse:
-    """A use case could not be carried out."""
+    """A use case could not be carried out.
+
+    Each ApplicationError subclass carries a `status_hint` (404 for not found,
+    409 for an idempotency conflict, 503 for an unconfigured provider). The hint
+    lives on the error rather than in a lookup table here, so adding an error
+    type does not require editing two files — but note the direction of the
+    dependency: the application layer offers a hint and this adapter decides to
+    honour it. Nothing in app.application performs HTTP.
+    """
     assert isinstance(exc, ApplicationError)
     return _render(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=exc.status_hint,
         code=exc.code,
         message=exc.message,
     )
@@ -81,7 +93,7 @@ async def handle_request_validation_error(_request: Request, exc: Exception) -> 
         for error in exc.errors()
     ]
     return _render(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=HTTP_422_UNPROCESSABLE,
         code="validation_error",
         message="Request validation failed.",
         details=details,
