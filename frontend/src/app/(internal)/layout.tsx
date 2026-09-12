@@ -54,7 +54,9 @@ export default function InternalLayout({ children }: Readonly<{ children: ReactN
           </Link>
         </div>
       </header>
-      <main className="flex-1 bg-paper">{children}</main>
+      <main id="main" className="flex-1 bg-paper">
+        {children}
+      </main>
     </>
   );
 }

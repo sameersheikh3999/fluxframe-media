@@ -22,13 +22,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type FieldErrors } from "react-hook-form";
 
+import { ErrorSummary, type SummaryItem } from "@/components/leads/error-summary";
 import {
   SelectField,
   TextAreaField,
   TextField,
 } from "@/components/leads/form-fields";
+import { Button } from "@/components/ui/button-link";
+import { Icon } from "@/components/ui/icon";
 import {
   contentVolumes,
   industries,
@@ -53,6 +56,10 @@ export function BookCallForm() {
   const [state, setState] = useState<SubmitState>("idle");
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  // Drives the focusable error summary. Kept separate from `errors` so a
+  // failed SUBMIT populates it, while typing does not — focus must move on
+  // submit, never on blur.
+  const [summary, setSummary] = useState<SummaryItem[]>([]);
 
   // Generated ONCE, on mount. `useState` with a lazy initialiser rather than
   // `useRef`: the value is stable for the component's life, React never reads
@@ -80,10 +87,25 @@ export function BookCallForm() {
     captureAttribution();
   }, []);
 
+  /** Client-side validation failed: build the summary from RHF's errors. */
+  function onInvalid(fieldErrors: FieldErrors<LeadFormValues>) {
+    setSummary(
+      Object.entries(fieldErrors)
+        .filter(([, error]) => error?.message)
+        .map(([field, error]) => ({
+          field,
+          message: String(error?.message),
+        })),
+    );
+    setFormError(null);
+    setRequestId(null);
+  }
+
   async function onSubmit(values: LeadFormValues) {
     setState("submitting");
     setFormError(null);
     setRequestId(null);
+    setSummary([]);
 
     try {
       await submitLead(
@@ -110,11 +132,14 @@ export function BookCallForm() {
         // Server-side field errors are mapped onto the matching inputs, so a
         // rejection the client validator did not catch still lands in the
         // right place instead of as an opaque banner.
+        const serverItems: SummaryItem[] = [];
         for (const [field, message] of Object.entries(error.fieldErrors)) {
           if (field in emptyLeadForm) {
             setError(field as keyof LeadFormValues, { type: "server", message });
+            serverItems.push({ field, message });
           }
         }
+        setSummary(serverItems);
         setFormError(error.friendlyMessage);
       } else {
         setFormError("Something went wrong. Please try again, or email us directly.");
@@ -125,7 +150,15 @@ export function BookCallForm() {
   const busy = state === "submitting";
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-10">
+    <form
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
+      noValidate
+      aria-busy={busy}
+      className="space-y-10"
+    >
+      {/* Above the fieldset so it is the first thing in the form, and so
+          focus lands at the top rather than mid-page. */}
+      <ErrorSummary items={summary} requestId={requestId} />
       <fieldset disabled={busy} className="space-y-10">
         <legend className="sr-only">Book a strategy call</legend>
 
@@ -257,31 +290,40 @@ export function BookCallForm() {
         </div>
       </fieldset>
 
-      {/* role="alert" so the failure is announced, not just shown. */}
-      {formError ? (
+      {/* A transport-level failure (offline, 429, 500) has no field to attach
+          to, so it gets its own live region rather than the summary. */}
+      {formError && summary.length === 0 ? (
         <div
           role="alert"
-          className="border border-accent bg-accent/5 px-5 py-4 text-sm text-ink"
+          className="flex gap-3 border-l-2 border-accent bg-accent/5 px-5 py-4 text-sm"
         >
-          <p className="font-medium">{formError}</p>
-          {requestId ? (
-            <p className="mt-2 text-xs text-ink-muted">
-              Reference: <span className="font-mono">{requestId}</span>
-            </p>
-          ) : null}
+          <Icon name="alert" size="md" className="mt-0.5 text-accent" />
+          <div>
+            <p className="font-medium">{formError}</p>
+            {requestId ? (
+              <p className="mt-2 text-xs text-ink-muted">
+                Reference: <span className="font-mono">{requestId}</span>
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-4 border-t border-line pt-8">
-        <button
+        <Button
           type="submit"
           disabled={busy}
-          className="inline-flex items-center justify-center rounded-full border border-ink bg-ink px-8 py-3.5 text-sm font-medium text-ink-inverse transition-colors hover:border-accent hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+          icon={busy ? "refresh" : "arrow-right"}
+          iconPosition="right"
+          className="px-8"
         >
           {busy ? "Sending…" : "Book my strategy call"}
-        </button>
-        <p className="text-xs text-ink-muted">
-          We reply within one business day. No automated sequences.
+        </Button>
+        {/* aria-live so the state change is announced, not only shown. */}
+        <p className="text-xs text-ink-muted" aria-live="polite">
+          {busy
+            ? "Sending your enquiry…"
+            : "We reply within one business day. No automated sequences."}
         </p>
       </div>
     </form>

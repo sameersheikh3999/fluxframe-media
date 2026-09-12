@@ -15,7 +15,9 @@ export default function MarketingLayout({ children }: Readonly<{ children: React
   return (
     <>
       <SiteHeader />
-      <main className="flex-1">{children}</main>
+      <main id="main" className="flex-1">
+        {children}
+      </main>
       <SiteFooter />
     </>
   );

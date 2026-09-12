@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Icon } from "@/components/ui/icon";
 import { demoQualities, demoScenarios, industries } from "@/config/lead-options";
 import type { GenerateDemoLeadsResponse } from "@/types/lead";
 
@@ -67,8 +68,13 @@ export function DemoGenerator() {
     }
   }
 
+  // `border-line-control` (3.38:1) rather than the decorative rule colour
+  // (1.49:1): a select's boundary is what tells you where the control is, so
+  // WCAG 1.4.11 applies. `min-h-touch` keeps it at 44px.
   const selectClasses =
-    "w-full border border-line-strong bg-paper-raised px-3 py-2.5 text-sm focus:outline-none focus-visible:border-ink";
+    "w-full min-h-touch appearance-none border border-line-control bg-paper-raised " +
+    "px-3 py-2.5 pr-10 text-sm transition-colors duration-instant " +
+    "focus:outline-none focus-visible:border-ink";
 
   return (
     <div className="space-y-8">
@@ -84,12 +90,13 @@ export function DemoGenerator() {
                 type="button"
                 aria-pressed={count === option}
                 onClick={() => setCount(option)}
-                className={`flex-1 border px-4 py-2.5 text-sm transition-colors ${
+                className={`inline-flex min-h-touch flex-1 items-center justify-center gap-1.5 border px-4 text-sm transition-colors duration-instant ${
                   count === option
                     ? "border-ink bg-ink text-ink-inverse"
-                    : "border-line-strong hover:border-ink"
+                    : "border-line-control hover:border-ink"
                 }`}
               >
+                {count === option ? <Icon name="check" size="sm" /> : null}
                 {option}
               </button>
             ))}
@@ -103,6 +110,12 @@ export function DemoGenerator() {
           >
             Quality mix
           </label>
+          <div className="relative">
+            <Icon
+              name="chevron-down"
+              size="sm"
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
           <select
             id="quality"
             value={quality}
@@ -115,6 +128,7 @@ export function DemoGenerator() {
               </option>
             ))}
           </select>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -124,6 +138,12 @@ export function DemoGenerator() {
           >
             Scenario
           </label>
+          <div className="relative">
+            <Icon
+              name="chevron-down"
+              size="sm"
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
           <select
             id="scenario"
             value={scenario}
@@ -136,6 +156,7 @@ export function DemoGenerator() {
               </option>
             ))}
           </select>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -145,6 +166,12 @@ export function DemoGenerator() {
           >
             Industry
           </label>
+          <div className="relative">
+            <Icon
+              name="chevron-down"
+              size="sm"
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
           <select
             id="industry"
             value={industry}
@@ -158,6 +185,7 @@ export function DemoGenerator() {
               </option>
             ))}
           </select>
+          </div>
         </div>
       </div>
 
@@ -166,8 +194,9 @@ export function DemoGenerator() {
           type="button"
           onClick={generate}
           disabled={busy}
-          className="border border-ink bg-ink px-6 py-3 text-sm font-medium text-ink-inverse transition-colors hover:border-accent hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-touch items-center gap-2 rounded-full border border-ink bg-ink px-6 text-sm font-medium text-ink-inverse transition-colors duration-instant hover:border-accent hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
         >
+          <Icon name={busy ? "refresh" : "sparkles"} size="sm" />
           {busy ? "Generating…" : `Generate ${count} demo lead${count > 1 ? "s" : ""}`}
         </button>
         <p className="text-xs text-ink-muted">
@@ -175,18 +204,30 @@ export function DemoGenerator() {
         </p>
       </div>
 
+      {/* A polite live region: generation is async and the button may have
+          lost focus by the time it finishes. */}
+      <p aria-live="polite" className="sr-only">
+        {busy
+          ? "Generating demo leads…"
+          : result.kind === "success"
+            ? result.data.message
+            : ""}
+      </p>
+
       {result.kind === "error" ? (
         <div
           role="alert"
-          className="border border-accent bg-accent/5 px-5 py-4 text-sm"
+          className="flex items-start gap-3 border-l-2 border-accent bg-accent/5 px-5 py-4 text-sm"
         >
+          <Icon name="alert" size="md" className="mt-0.5 text-accent" />
           {result.message}
         </div>
       ) : null}
 
       {result.kind === "success" ? (
         <div className="border border-line bg-paper-raised">
-          <p className="border-b border-line px-5 py-3 text-sm font-medium">
+          <p className="flex items-center gap-2 border-b border-line px-5 py-3 text-sm font-medium">
+            <Icon name="check" size="sm" className="text-accent" />
             {result.data.message}
           </p>
           <ul className="divide-y divide-line">
@@ -203,9 +244,10 @@ export function DemoGenerator() {
           <div className="border-t border-line px-5 py-3">
             <Link
               href="/dashboard/leads"
-              className="text-sm underline underline-offset-4 hover:text-accent"
+              className="inline-flex min-h-touch items-center gap-1.5 text-sm underline underline-offset-4 hover:text-accent"
             >
-              View them on the dashboard →
+              View them on the dashboard
+              <Icon name="arrow-right" size="sm" />
             </Link>
           </div>
         </div>

@@ -14,6 +14,7 @@ import {
   TemperatureBadge,
   formatDate,
 } from "@/components/dashboard/primitives";
+import { Icon } from "@/components/ui/icon";
 import { labelFor } from "@/config/lead-options";
 import { BackendError, getLead } from "@/lib/api-server";
 import type { LeadDetail } from "@/types/lead";
@@ -81,9 +82,10 @@ export default async function LeadDetailPage({
     <div className="mx-auto w-full max-w-6xl px-6 py-10 sm:px-8">
       <Link
         href="/dashboard/leads"
-        className="text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
+        className="inline-flex min-h-touch items-center gap-2 text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
       >
-        ← All leads
+        <Icon name="arrow-left" size="sm" />
+        All leads
       </Link>
 
       <header className="mt-6 flex flex-wrap items-start justify-between gap-6 border-b border-line pb-8">
@@ -123,9 +125,12 @@ export default async function LeadDetailPage({
                     href={lead.website}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="underline underline-offset-4 hover:text-accent"
+                    className="inline-flex items-center gap-1.5 underline underline-offset-4 hover:text-accent"
                   >
                     {lead.website}
+                    {/* Labelled, because it warns of a behaviour the link text
+                        does not: this one leaves the site. */}
+                    <Icon name="external" size="sm" label="Opens in a new tab" />
                   </a>
                 ) : (
                   "—"

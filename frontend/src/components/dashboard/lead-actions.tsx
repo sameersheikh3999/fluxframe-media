@@ -20,6 +20,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { Icon } from "@/components/ui/icon";
 import { labelFor } from "@/config/lead-options";
 import type { LeadStatus, SalesBrief } from "@/types/lead";
 
@@ -90,7 +91,7 @@ export function LeadActions({
                   callInternal(`dashboard/leads/${leadId}/status`, "PATCH", { status }),
                 )
               }
-              className="border border-line-strong px-4 py-2 text-sm transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-touch items-center gap-2 rounded-full border border-line-control px-4 text-sm transition-colors duration-instant hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
               {busy === status ? "Saving…" : `Mark ${labelFor(status)}`}
             </button>
@@ -107,9 +108,10 @@ export function LeadActions({
               callInternal(`dashboard/leads/${leadId}/rescore`, "POST"),
             )
           }
-          className="border border-line-strong px-4 py-2 text-sm transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-touch items-center gap-2 rounded-full border border-line-control px-4 text-sm transition-colors duration-instant hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
           title="Recompute the score under the current rules"
         >
+          <Icon name="refresh" size="sm" />
           {busy === "rescore" ? "Rescoring…" : "Rescore"}
         </button>
         <button
@@ -118,15 +120,22 @@ export function LeadActions({
           onClick={() =>
             run("dispatch", () => callInternal("admin/outbox/dispatch", "POST"))
           }
-          className="border border-line-strong px-4 py-2 text-sm transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-touch items-center gap-2 rounded-full border border-line-control px-4 text-sm transition-colors duration-instant hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
           title="Run one outbox dispatch pass now instead of waiting for the poll interval"
         >
+          <Icon name="arrow-right" size="sm" />
           {busy === "dispatch" ? "Dispatching…" : "Run outbox dispatch"}
         </button>
       </div>
 
+      {/* aria-live so the outcome is announced, not only rendered — the
+          button that triggered it may already have lost focus. */}
+      <p aria-live="polite" className="sr-only">
+        {busy ? `Working on ${busy}…` : ""}
+      </p>
       {state.kind === "error" ? (
-        <p role="alert" className="text-sm text-accent">
+        <p role="alert" className="flex items-center gap-2 text-sm text-accent">
+          <Icon name="alert" size="sm" />
           {state.message}
         </p>
       ) : null}
@@ -172,12 +181,14 @@ export function SalesBriefAction({
         type="button"
         onClick={generate}
         disabled={busy}
-        className="border border-line-strong px-4 py-2 text-sm transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex min-h-touch items-center gap-2 rounded-full border border-line-control px-4 text-sm transition-colors duration-instant hover:border-ink disabled:cursor-not-allowed disabled:opacity-50"
       >
+        <Icon name="sparkles" size="sm" />
         {busy ? "Generating…" : existing ? "Regenerate brief" : "Generate AI brief"}
       </button>
       {error ? (
-        <p role="alert" className="text-sm text-accent">
+        <p role="alert" className="flex items-center gap-2 text-sm text-accent">
+          <Icon name="alert" size="sm" />
           {error}
         </p>
       ) : null}

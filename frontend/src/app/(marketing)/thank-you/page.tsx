@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ButtonLink } from "@/components/ui/button-link";
 import { Container } from "@/components/ui/container";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { Icon } from "@/components/ui/icon";
 
 export const metadata: Metadata = {
   title: "Thank you",
@@ -16,7 +16,10 @@ export default function ThankYouPage() {
   return (
     <Container className="py-24 sm:py-32 lg:py-40">
       <div className="max-w-2xl">
-        <Eyebrow>Enquiry received</Eyebrow>
+        <p className="flex items-center gap-2.5 text-eyebrow font-medium uppercase text-accent">
+          <Icon name="check" size="md" />
+          Enquiry received
+        </p>
         <h1 className="mt-8 font-display text-headline font-semibold text-balance">
           Thanks — that is with us.
         </h1>
@@ -41,8 +44,10 @@ export default function ThankYouPage() {
         </ol>
 
         <div className="mt-12 flex flex-wrap gap-4">
-          <ButtonLink href="/">Back to home</ButtonLink>
-          <ButtonLink href="/work" variant="secondary">
+          <ButtonLink href="/" icon="arrow-left" iconPosition="left">
+            Back to home
+          </ButtonLink>
+          <ButtonLink href="/work" variant="secondary" icon="arrow-right">
             See the work
           </ButtonLink>
         </div>

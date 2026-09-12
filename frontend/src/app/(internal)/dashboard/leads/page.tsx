@@ -1,18 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import {
-  DemoBadge,
-  EmptyState,
-  ErrorState,
-  StatCard,
-  StatusBadge,
-  SyncBadge,
-  TemperatureBadge,
-  formatRelative,
-} from "@/components/dashboard/primitives";
+import { LeadTable } from "@/components/dashboard/lead-table";
+import { EmptyState, ErrorState, StatCard } from "@/components/dashboard/primitives";
 import { ButtonLink } from "@/components/ui/button-link";
-import { labelFor } from "@/config/lead-options";
+import { Icon } from "@/components/ui/icon";
 import {
   BackendError,
   getDashboardStats,
@@ -172,13 +164,21 @@ export default async function LeadsPage({
           <label htmlFor="q" className="text-xs uppercase tracking-wider text-ink-muted">
             Search
           </label>
-          <input
-            id="q"
-            name="q"
-            defaultValue={search ?? ""}
-            placeholder="Company, name or email"
-            className="w-64 border border-line-strong bg-paper-raised px-3 py-2 text-sm focus:outline-none focus-visible:border-ink"
-          />
+          <div className="relative">
+            <Icon
+              name="search"
+              size="sm"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+            />
+            <input
+              id="q"
+              name="q"
+              type="search"
+              defaultValue={search ?? ""}
+              placeholder="Company, name or email"
+              className="min-h-touch w-64 max-w-full border border-line-control bg-paper-raised py-2 pl-9 pr-3 text-sm focus:outline-none focus-visible:border-ink"
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-1.5">
           <label
@@ -191,7 +191,7 @@ export default async function LeadsPage({
             id="temperature"
             name="temperature"
             defaultValue={temperature ?? ""}
-            className="w-40 border border-line-strong bg-paper-raised px-3 py-2 text-sm focus:outline-none focus-visible:border-ink"
+            className="min-h-touch w-40 border border-line-control bg-paper-raised px-3 py-2 text-sm focus:outline-none focus-visible:border-ink"
           >
             <option value="">All</option>
             <option value="hot">Hot</option>
@@ -201,14 +201,14 @@ export default async function LeadsPage({
         </div>
         <button
           type="submit"
-          className="border border-ink bg-ink px-5 py-2 text-sm font-medium text-ink-inverse transition-colors hover:border-accent hover:bg-accent"
+          className="inline-flex min-h-touch items-center rounded-full border border-ink bg-ink px-5 py-2 text-sm font-medium text-ink-inverse transition-colors duration-instant hover:border-accent hover:bg-accent"
         >
           Apply
         </button>
         {hasFilters ? (
           <Link
             href="/dashboard/leads"
-            className="px-2 py-2 text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
+            className="inline-flex min-h-touch items-center px-2 text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
           >
             Clear
           </Link>
@@ -231,79 +231,10 @@ export default async function LeadsPage({
         </div>
       ) : (
         <>
-          <div className="mt-8 overflow-x-auto border border-line">
-            <table className="w-full min-w-[64rem] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-line bg-paper-raised text-left">
-                  {[
-                    "Lead",
-                    "Company",
-                    "Industry",
-                    "Budget",
-                    "Volume",
-                    "Score",
-                    "Status",
-                    "CRM",
-                    "Created",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      scope="col"
-                      className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-ink-muted"
-                    >
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {leads.items.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="border-b border-line last:border-b-0 hover:bg-paper-raised"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/dashboard/leads/${lead.id}`}
-                        className="font-medium underline-offset-4 hover:underline"
-                      >
-                        {lead.full_name}
-                      </Link>
-                      <div className="mt-0.5 text-xs text-ink-muted">{lead.email}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-2">
-                        {lead.company_name}
-                        {lead.is_demo ? <DemoBadge /> : null}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-ink-muted">{labelFor(lead.industry)}</td>
-                    <td className="px-4 py-3 text-ink-muted">
-                      {labelFor(lead.monthly_marketing_budget)}
-                    </td>
-                    <td className="px-4 py-3 text-ink-muted">
-                      {labelFor(lead.content_volume)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <TemperatureBadge temperature={lead.temperature} score={lead.score} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={lead.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <SyncBadge status={lead.crm_sync_status} />
-                    </td>
-                    <td className="px-4 py-3 text-xs text-ink-muted">
-                      {formatRelative(lead.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <LeadTable leads={leads.items} />
 
           <div className="mt-6 flex items-center justify-between gap-4">
-            <p className="text-xs text-ink-muted">
+            <p className="text-xs text-ink-muted" role="status">
               Showing {leads.offset + 1}–{leads.offset + leads.items.length} of{" "}
               {leads.total}
             </p>
@@ -311,17 +242,21 @@ export default async function LeadsPage({
               {page > 1 ? (
                 <Link
                   href={pageHref(page - 1)}
-                  className="border border-line-strong px-4 py-2 text-sm hover:border-ink"
+                  rel="prev"
+                  className="inline-flex min-h-touch items-center gap-2 rounded-full border border-line-control px-4 text-sm transition-colors duration-instant hover:border-ink"
                 >
+                  <Icon name="arrow-left" size="sm" />
                   Previous
                 </Link>
               ) : null}
               {leads.has_more ? (
                 <Link
                   href={pageHref(page + 1)}
-                  className="border border-line-strong px-4 py-2 text-sm hover:border-ink"
+                  rel="next"
+                  className="inline-flex min-h-touch items-center gap-2 rounded-full border border-line-control px-4 text-sm transition-colors duration-instant hover:border-ink"
                 >
                   Next
+                  <Icon name="arrow-right" size="sm" />
                 </Link>
               ) : null}
             </div>

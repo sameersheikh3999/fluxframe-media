@@ -20,7 +20,9 @@ export function Hero() {
           </p>
 
           <div className="mt-12 flex flex-wrap items-center gap-4">
-            <ButtonLink href={primaryCta.href}>{primaryCta.label}</ButtonLink>
+            <ButtonLink href={primaryCta.href} icon="arrow-right">
+              {primaryCta.label}
+            </ButtonLink>
             <ButtonLink href="/work" variant="secondary">
               See the work
             </ButtonLink>

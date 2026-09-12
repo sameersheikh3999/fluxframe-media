@@ -26,7 +26,7 @@ export function PlaceholderPage({
         </p>
 
         <div className="mt-12">
-          <ButtonLink href="/" variant="secondary">
+          <ButtonLink href="/" variant="secondary" icon="arrow-left" iconPosition="left">
             Back to home
           </ButtonLink>
         </div>

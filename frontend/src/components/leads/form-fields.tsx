@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { FieldError } from "react-hook-form";
 
+import { Icon } from "@/components/ui/icon";
 import type { Option } from "@/config/lead-options";
 
 /**
@@ -37,7 +38,14 @@ function FieldShell({ id, label, error, hint, optional, children }: FieldShellPr
         </p>
       ) : null}
       {error ? (
-        <p id={`${id}-error`} role="alert" className="text-xs text-accent">
+        // An icon beside the colour: colour alone is not a reliable signal for
+        // anyone with a colour vision deficiency.
+        <p
+          id={`${id}-error`}
+          role="alert"
+          className="flex items-center gap-1.5 text-xs text-accent"
+        >
+          <Icon name="alert" size="sm" />
           {error.message}
         </p>
       ) : null}
@@ -45,9 +53,16 @@ function FieldShell({ id, label, error, hint, optional, children }: FieldShellPr
   );
 }
 
+// `border-line-control` rather than `border-line-strong`: a form control's
+// boundary carries meaning, so WCAG 1.4.11 requires 3:1 against the surface.
+// The decorative rule colour measured 1.49:1 — a real failure for anyone with
+// reduced contrast sensitivity, and invisible to everyone else.
+//
+// `min-h-touch` keeps every field at least 44px tall.
 const controlClasses =
-  "w-full rounded-none border bg-paper-raised px-4 py-3 text-sm transition-colors " +
-  "placeholder:text-ink-muted/70 focus:outline-none focus-visible:border-ink";
+  "w-full min-h-touch rounded-none border bg-paper-raised px-4 py-3 text-sm " +
+  "transition-colors duration-instant placeholder:text-ink-muted/70 " +
+  "focus:outline-none focus-visible:border-ink";
 
 function describedBy(id: string, error?: FieldError, hint?: string): string | undefined {
   if (error) return `${id}-error`;
@@ -87,7 +102,7 @@ export function TextField({
         autoComplete={autoComplete}
         aria-invalid={error ? "true" : undefined}
         aria-describedby={describedBy(id, error, hint)}
-        className={`${controlClasses} ${error ? "border-accent" : "border-line-strong"}`}
+        className={`${controlClasses} ${error ? "border-accent" : "border-line-control"}`}
         {...registration}
       />
     </FieldShell>
@@ -115,13 +130,19 @@ export function SelectField({
 }: SelectFieldProps) {
   return (
     <FieldShell id={id} label={label} error={error} hint={hint}>
+      <div className="relative">
+        <Icon
+          name="chevron-down"
+          size="sm"
+          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink-muted"
+        />
       <select
         id={id}
         defaultValue=""
         aria-invalid={error ? "true" : undefined}
         aria-describedby={describedBy(id, error, hint)}
-        className={`${controlClasses} appearance-none ${
-          error ? "border-accent" : "border-line-strong"
+        className={`${controlClasses} appearance-none pr-10 ${
+          error ? "border-accent" : "border-line-control"
         }`}
         {...registration}
       >
@@ -134,6 +155,7 @@ export function SelectField({
           </option>
         ))}
       </select>
+      </div>
     </FieldShell>
   );
 }
@@ -168,7 +190,7 @@ export function TextAreaField({
         aria-invalid={error ? "true" : undefined}
         aria-describedby={describedBy(id, error, hint)}
         className={`${controlClasses} resize-y ${
-          error ? "border-accent" : "border-line-strong"
+          error ? "border-accent" : "border-line-control"
         }`}
         {...registration}
       />

@@ -3,7 +3,7 @@
 /* ---------------------------------------------------------------------------
    Fluxframe Media — design tokens.
 
-   Every colour, font and spacing decision on the site resolves to a token
+   Every colour, font and motion decision on the site resolves to a token
    declared here. Pages compose tokens; they do not invent hex values. That is
    the difference between a design system and a pile of Tailwind classes.
 
@@ -12,8 +12,11 @@
    a second accent colour, not adding a gradient to the first one.
 
    Light-only, on purpose. A marketing site that commits to one look is easier
-   to keep coherent than one that maintains two. The dashboard (Phase 2) can
-   revisit this if it needs to.
+   to keep coherent than one that maintains two.
+
+   Contrast is measured, not assumed. Every pairing below was checked against
+   WCAG: text against its background clears 4.5:1, and control boundaries clear
+   the separate 3:1 non-text rule.
 --------------------------------------------------------------------------- */
 
 @theme {
@@ -22,16 +25,26 @@
   --color-paper-raised: #ffffff;
   --color-paper-inverse: #0e0e0d;
 
-  /* Text */
-  --color-ink: #0e0e0d;
-  --color-ink-muted: #6c6860;
+  /* Text — measured against --color-paper */
+  --color-ink: #0e0e0d; /* 18.5:1 */
+  --color-ink-muted: #6c6860; /*  5.3:1 — passes body text */
   --color-ink-inverse: #fbfaf8;
 
-  /* Lines */
+  /* Decorative rules. These carry no meaning and no state, so the 3:1
+     non-text rule does not apply to them — they exist to suggest structure,
+     not to define a control. */
   --color-line: #e7e3db;
   --color-line-strong: #d4cfc4;
 
-  /* Accent — used sparingly: calls to action and one rule per section. */
+  /* Control boundaries: inputs, selects, secondary buttons.
+     These DO carry meaning — they tell you where a control begins and ends —
+     so WCAG 1.4.11 requires 3:1 against the adjacent surface. The old
+     --color-line-strong measured 1.49:1 here, which is a genuine failure for
+     anyone with reduced contrast sensitivity. This measures 3.38:1. */
+  --color-line-control: #8d887e;
+
+  /* Accent — used sparingly: calls to action, one rule per section, errors.
+     4.76:1 on paper, and 4.76:1 the other way for white text on accent. */
   --color-accent: #c0492a;
   --color-accent-hover: #a03a20;
 
@@ -58,6 +71,17 @@
   --text-eyebrow: 0.75rem;
   --text-eyebrow--line-height: 1;
   --text-eyebrow--letter-spacing: 0.16em;
+
+  /* Motion. Three durations chosen for distance travelled, not one value
+     copied everywhere: a colour swap should not take as long as a panel
+     opening. All are overridden to ~0 under prefers-reduced-motion below. */
+  --duration-instant: 120ms; /* colour and opacity on hover */
+  --duration-quick: 200ms; /* small state changes */
+  --duration-panel: 280ms; /* disclosure, anything that moves */
+
+  /* Minimum comfortable hit area. WCAG 2.5.8 asks for 24px on the web; 44px
+     is the touch guidance, and it costs nothing on a pointer device. */
+  --spacing-touch: 2.75rem; /* 44px */
 }
 
 html {
@@ -72,13 +96,50 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* A visible focus ring that matches the brand rather than the browser default. */
+/* Tailwind v4's preflight no longer sets `cursor: pointer` on buttons, so an
+   unstyled <button> shows the default arrow. That single missing property is
+   one of the most common reasons an interface "feels" unfinished. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* A visible focus ring that matches the brand rather than the browser default.
+   :focus-visible rather than :focus, so it appears for keyboard users without
+   ringing every mouse click. */
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
   border-radius: 2px;
 }
 
+/* The skip link: off-screen until focused, then pinned to the top-left.
+   Keyboard users should not tab through the entire navigation to reach the
+   content on every page. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+}
+
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  padding: 0.75rem 1.25rem;
+  background-color: var(--color-ink);
+  color: var(--color-ink-inverse);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* Respect the OS-level preference. Motion that conveys meaning is reduced to
+   an instant change rather than removed, so nothing becomes unexplained. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -87,6 +148,8 @@ body {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

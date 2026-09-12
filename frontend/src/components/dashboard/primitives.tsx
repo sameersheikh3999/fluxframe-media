@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Icon } from "@/components/ui/icon";
 import { labelFor } from "@/config/lead-options";
 import type { CrmSyncStatus, LeadStatus, LeadTemperature } from "@/types/lead";
 
@@ -162,7 +163,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="border border-dashed border-line-strong px-8 py-16 text-center">
+    <div className="border border-dashed border-line-control px-8 py-16 text-center">
       <p className="font-display text-title font-semibold">{title}</p>
       <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
         {description}
@@ -181,8 +182,11 @@ export function EmptyState({
  */
 export function ErrorState({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="border border-accent/40 bg-accent/5 px-8 py-10">
-      <p className="font-display text-title font-semibold">{title}</p>
+    <div className="border-l-2 border-accent bg-accent/5 px-8 py-10">
+      <p className="flex items-center gap-2.5 font-display text-title font-semibold">
+        <Icon name="alert" size="lg" className="text-accent" />
+        {title}
+      </p>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-ink-muted">{detail}</p>
     </div>
   );
