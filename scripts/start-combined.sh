@@ -22,6 +22,8 @@
 set -euo pipefail
 
 BACKEND_PORT="${BACKEND_PORT:-8000}"
+# Absolute path to the venv interpreter, so nothing depends on PATH order.
+VENV_PYTHON="${VENV_PYTHON:-/app/backend/.venv/bin/python}"
 # Railway injects $PORT. 3000 is the local default.
 FRONTEND_PORT="${PORT:-3000}"
 
@@ -53,7 +55,10 @@ cd /app/backend
 #
 # --proxy-headers so X-Forwarded-For survives, which the rate limiter needs to
 # see the real client rather than the proxy in front of it.
-uvicorn app.main:app \
+# `python -m uvicorn` rather than the `uvicorn` console script: invoking the
+# module ignores the script's baked-in shebang entirely, so this keeps working
+# even if the virtualenv is ever moved again.
+"${VENV_PYTHON}" -m uvicorn app.main:app \
   --host 127.0.0.1 \
   --port "${BACKEND_PORT}" \
   --proxy-headers \

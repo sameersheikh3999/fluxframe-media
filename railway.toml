@@ -21,7 +21,10 @@ dockerfilePath = "Dockerfile"
 #
 # The venv is on PATH in the image, so `alembic` resolves; alembic.ini lives in
 # /app/backend.
-preDeployCommand = "cd /app/backend && alembic upgrade head"
+# `python -m alembic` for the same reason the start script uses
+# `python -m uvicorn`: it does not depend on a console script's shebang,
+# which is what broke the first deploy of this image.
+preDeployCommand = "cd /app/backend && /app/backend/.venv/bin/python -m alembic upgrade head"
 
 # Next.js proxies /health through to FastAPI (see frontend/next.config.ts), so
 # this single check proves BOTH processes are alive. A check that only proved

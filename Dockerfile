@@ -74,7 +74,19 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never
 
-WORKDIR /build
+# Build at the EXACT path the runtime image uses, not a scratch directory.
+#
+# A Python virtualenv is NOT relocatable. Every console script in .venv/bin/
+# has an absolute shebang baked in at creation time: `#!/<venv>/bin/python`.
+# Building at /build and copying to /app/backend leaves all of them pointing
+# at an interpreter that does not exist in the runtime image, and the error is
+# famously unhelpful:
+#
+#     /app/backend/.venv/bin/uvicorn: cannot execute: required file not found
+#
+# ("required file" means the shebang interpreter, not the script.) Building
+# here means the shebangs are correct from the start.
+WORKDIR /app/backend
 
 COPY backend/pyproject.toml backend/uv.lock ./
 # --frozen: fail if uv.lock disagrees with pyproject.toml, rather than quietly
@@ -116,7 +128,7 @@ RUN useradd --create-home --uid 10001 fluxframe
 WORKDIR /app
 
 # --- backend ---
-COPY --from=backend-builder --chown=fluxframe:fluxframe /build /app/backend
+COPY --from=backend-builder --chown=fluxframe:fluxframe /app/backend /app/backend
 
 # --- frontend (standalone output) ---
 # The standalone server expects this exact layout: server.js at the root of the
@@ -127,6 +139,16 @@ COPY --from=frontend-builder --chown=fluxframe:fluxframe /build/public /app/fron
 
 COPY --chown=fluxframe:fluxframe scripts/start-combined.sh /app/start.sh
 RUN chmod +x /app/start.sh
+
+# Prove the interpreter and both entry points actually work, inside the runtime
+# image, before anything ships. A broken venv caught here is a failed build; the
+# same fault caught at boot is a crash loop in production.
+RUN /app/backend/.venv/bin/python -m uvicorn --version \
+ && /app/backend/.venv/bin/python -m alembic --version \
+ && /app/backend/.venv/bin/python -c "import app.main" \
+ && node --version \
+ && test -f /app/frontend/server.js \
+ && echo "runtime image verified"
 
 USER fluxframe
 
